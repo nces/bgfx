@@ -11,14 +11,28 @@ struct PosColorVertex
 	float m_x;
 	float m_y;
 	float m_z;
-	uint32_t m_abgr;
+    float m_w; // vertex ID
+
+    // first neighbor
+	float m_x1;
+	float m_y1;
+	float m_z1;
+
+    // second neighbor
+	float m_x2;
+	float m_y2;
+	float m_z2;
+
+	uint32_t m_abgr; // color
 
 	static void init()
 	{
 		ms_decl
 			.begin()
-			.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-			.add(bgfx::Attrib::Color0,   4, bgfx::AttribType::Uint8, true)
+			.add(bgfx::Attrib::Position,  4, bgfx::AttribType::Float)
+			.add(bgfx::Attrib::Tangent,   3, bgfx::AttribType::Float)       // First neighbor
+			.add(bgfx::Attrib::Bitangent, 3, bgfx::AttribType::Float)
+			.add(bgfx::Attrib::Color0,    4, bgfx::AttribType::Uint8, true) // Second neighbor
 			.end();
 	};
 
@@ -29,15 +43,17 @@ bgfx::VertexDecl PosColorVertex::ms_decl;
 
 static PosColorVertex s_cubeVertices[8] =
 {
-	{-1.0f,  1.0f,  1.0f, 0xff000000 },
-	{ 1.0f,  1.0f,  1.0f, 0xff0000ff },
-	{-1.0f, -1.0f,  1.0f, 0xff00ff00 },
-	{ 1.0f, -1.0f,  1.0f, 0xff00ffff },
-	{-1.0f,  1.0f, -1.0f, 0xffff0000 },
-	{ 1.0f,  1.0f, -1.0f, 0xffff00ff },
-	{-1.0f, -1.0f, -1.0f, 0xffffff00 },
-	{ 1.0f, -1.0f, -1.0f, 0xffffffff },
+	{-1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff000000 },
+	{ 1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff0000ff },
+	{-1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff00ff00 },
+	{ 1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff00ffff },
+	{-1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffff0000 },
+	{ 1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffff00ff },
+	{-1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffffff00 },
+	{ 1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffffffff },
 };
+
+static PosColorVertex s_cubeVerticesN0[36];
 
 static const uint16_t s_cubeIndices[36] =
 {
@@ -54,12 +70,61 @@ static const uint16_t s_cubeIndices[36] =
 	2, 3, 6, // 10
 	6, 3, 7,
 };
+static uint16_t s_cubeIndices2[36];
 
 class ExampleCubes : public entry::AppI
 {
 	void init(int _argc, char** _argv) BX_OVERRIDE
 	{
 		Args args(_argc, _argv);
+
+        // initialize vertex buffers
+        for (int i = 0; i < 36; i += 3)
+        {
+            uint16_t ind  = s_cubeIndices[i];
+            uint16_t ind1 = s_cubeIndices[i + 1];
+            uint16_t ind2 = s_cubeIndices[i + 2];
+
+            // P0
+            s_cubeVerticesN0[i]      = s_cubeVertices[ind];
+            s_cubeVerticesN0[i].m_w  = 0;
+            // neighbor 1
+            s_cubeVerticesN0[i].m_x1 = s_cubeVertices[ind1].m_x;
+            s_cubeVerticesN0[i].m_y1 = s_cubeVertices[ind1].m_y;
+            s_cubeVerticesN0[i].m_z1 = s_cubeVertices[ind1].m_z;
+            // neighbor 2
+            s_cubeVerticesN0[i].m_x2 = s_cubeVertices[ind2].m_x;
+            s_cubeVerticesN0[i].m_y2 = s_cubeVertices[ind2].m_y;
+            s_cubeVerticesN0[i].m_z2 = s_cubeVertices[ind2].m_z;
+
+            // P1
+            s_cubeVerticesN0[i + 1]      = s_cubeVertices[ind1];
+            s_cubeVerticesN0[i + 1].m_w  = 1;
+            // neighbor 1
+            s_cubeVerticesN0[i + 1].m_x1 = s_cubeVertices[ind].m_x;
+            s_cubeVerticesN0[i + 1].m_y1 = s_cubeVertices[ind].m_y;
+            s_cubeVerticesN0[i + 1].m_z1 = s_cubeVertices[ind].m_z;
+            // neighbor 2
+            s_cubeVerticesN0[i + 1].m_x2 = s_cubeVertices[ind2].m_x;
+            s_cubeVerticesN0[i + 1].m_y2 = s_cubeVertices[ind2].m_y;
+            s_cubeVerticesN0[i + 1].m_z2 = s_cubeVertices[ind2].m_z;
+
+            // P2
+            s_cubeVerticesN0[i + 2]      = s_cubeVertices[ind2];
+            s_cubeVerticesN0[i + 2].m_w  = 2;
+            // neighbor 1
+            s_cubeVerticesN0[i + 2].m_x1 = s_cubeVertices[ind].m_x;
+            s_cubeVerticesN0[i + 2].m_y1 = s_cubeVertices[ind].m_y;
+            s_cubeVerticesN0[i + 2].m_z1 = s_cubeVertices[ind].m_z;
+            // neighbor 2
+            s_cubeVerticesN0[i + 2].m_x2 = s_cubeVertices[ind1].m_x;
+            s_cubeVerticesN0[i + 2].m_y2 = s_cubeVertices[ind1].m_y;
+            s_cubeVerticesN0[i + 2].m_z2 = s_cubeVertices[ind1].m_z;
+
+            s_cubeIndices2[i    ] = i;
+            s_cubeIndices2[i + 1] = i + 1;
+            s_cubeIndices2[i + 2] = i + 2;
+        }
 
 		m_width  = 1280;
 		m_height = 720;
@@ -86,18 +151,28 @@ class ExampleCubes : public entry::AppI
 		// Create static vertex buffer.
 		m_vbh = bgfx::createVertexBuffer(
 				// Static data can be passed with bgfx::makeRef
-				bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices) )
+				bgfx::makeRef(s_cubeVerticesN0, sizeof(s_cubeVerticesN0) )
 				, PosColorVertex::ms_decl
 				);
 
 		// Create static index buffer.
 		m_ibh = bgfx::createIndexBuffer(
 				// Static data can be passed with bgfx::makeRef
-				bgfx::makeRef(s_cubeIndices, sizeof(s_cubeIndices) )
+				bgfx::makeRef(s_cubeIndices2, sizeof(s_cubeIndices) )
 				);
 
 		// Create program from shaders.
 		m_program = loadProgram("vs_cubes", "fs_cubes");
+
+        // the predefined u_viewRect uniform will contain this information
+        //m_winScaleH = bgfx::createUniform("u_WIN_SCALE", bgfx::UniformType::Vec4);
+        //float winScaleVec[4] = { m_width, m_height, 0,0, }; // This should be a vec2, but apparently that doesn't exist in BGFX...
+        //bgfx::setUniform(m_winScaleH, winScaleVec);
+
+        // bgfx::setUniform appears to be benign, so this value is currently being set directly in the shader
+        m_wireColH = bgfx::createUniform("u_WIRE_COL", bgfx::UniformType::Vec4);
+        float wireCol[4] = { 1.0, 1.0, 1.0, 1.0 };
+        bgfx::setUniform(m_wireColH, wireCol);
 
 		m_timeOffset = bx::getHPCounter();
 	}
@@ -168,6 +243,8 @@ class ExampleCubes : public entry::AppI
 			// if no other draw calls are submitted to view 0.
 			bgfx::touch(0);
 
+#define DRAW_GRID
+#ifdef DRAW_GRID
 			// Submit 11x11 cubes.
 			for (uint32_t yy = 0; yy < 11; ++yy)
 			{
@@ -193,6 +270,23 @@ class ExampleCubes : public entry::AppI
 					bgfx::submit(0, m_program);
 				}
 			}
+#else
+			float mtx[16];
+			//bx::mtxScale(mtx, 5.0f, 5.0f, 5.0f);
+			bx::mtxRotateXY(mtx, time, time);
+//			mtx[12] = -15.0f + float(xx)*3.0f;
+//			mtx[13] = -15.0f + float(yy)*3.0f;
+			mtx[14] = 0.0f;
+
+			// Set model matrix for rendering.
+			bgfx::setTransform(mtx);
+
+			bgfx::setVertexBuffer(m_vbh);
+			bgfx::setIndexBuffer(m_ibh, 0, 12);
+			bgfx::setState(BGFX_STATE_DEFAULT);
+			bgfx::submit(0, m_program);
+#endif
+
 
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
@@ -210,6 +304,8 @@ class ExampleCubes : public entry::AppI
 	uint32_t m_reset;
 	bgfx::VertexBufferHandle m_vbh;
 	bgfx::IndexBufferHandle m_ibh;
+    bgfx::UniformHandle m_winScaleH;
+    bgfx::UniformHandle m_wireColH;
 	bgfx::ProgramHandle m_program;
 	int64_t m_timeOffset;
 };
