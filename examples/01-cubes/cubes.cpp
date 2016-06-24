@@ -23,6 +23,11 @@ struct PosColorVertex
 	float m_y2;
 	float m_z2;
 
+    // edge removal flags
+    float m_e1;
+    float m_e2;
+    float m_e3;
+
 	uint32_t m_abgr; // color
 
 	static void init()
@@ -31,8 +36,9 @@ struct PosColorVertex
 			.begin()
 			.add(bgfx::Attrib::Position,  4, bgfx::AttribType::Float)
 			.add(bgfx::Attrib::Tangent,   3, bgfx::AttribType::Float)       // First neighbor
-			.add(bgfx::Attrib::Bitangent, 3, bgfx::AttribType::Float)
-			.add(bgfx::Attrib::Color0,    4, bgfx::AttribType::Uint8, true) // Second neighbor
+			.add(bgfx::Attrib::Bitangent, 3, bgfx::AttribType::Float)       // Second neighbor
+			.add(bgfx::Attrib::Weight,    3, bgfx::AttribType::Float)       // Edge exclulsion flag
+			.add(bgfx::Attrib::Color0,    4, bgfx::AttribType::Uint8, true)
 			.end();
 	};
 
@@ -43,14 +49,14 @@ bgfx::VertexDecl PosColorVertex::ms_decl;
 
 static PosColorVertex s_cubeVertices[8] =
 {
-	{-1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff000000 },
-	{ 1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff0000ff },
-	{-1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff00ff00 },
-	{ 1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0xff00ffff },
-	{-1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffff0000 },
-	{ 1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffff00ff },
-	{-1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffffff00 },
-	{ 1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0xffffffff },
+	{-1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xff000000, },
+	{ 1.0f,  1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xff0000ff, },
+	{-1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xff00ff00, },
+	{ 1.0f, -1.0f,  1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xff00ffff, },
+	{-1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xffff0000, },
+	{ 1.0f,  1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xffff00ff, },
+	{-1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xffffff00, },
+	{ 1.0f, -1.0f, -1.0f, 0, 0,0,0, 0,0,0, 0,0,0, 0xffffffff, },
 };
 
 static PosColorVertex s_cubeVerticesN0[36];
@@ -72,6 +78,27 @@ static const uint16_t s_cubeIndices[36] =
 };
 static uint16_t s_cubeIndices2[36];
 
+static const float s_edgeExclude[36] =
+{
+    1,0,0,
+    0,0,1,
+
+    0,0,0,
+    0,0,0,
+
+    1,0,0,
+    0,1,0,
+
+    1,0,0,
+    0,1,0,
+
+    1,0,0,
+    0,1,0,
+
+    1,0,0,
+    0,1,0,
+};
+
 class ExampleCubes : public entry::AppI
 {
 	void init(int _argc, char** _argv) BX_OVERRIDE
@@ -84,6 +111,10 @@ class ExampleCubes : public entry::AppI
             uint16_t ind  = s_cubeIndices[i];
             uint16_t ind1 = s_cubeIndices[i + 1];
             uint16_t ind2 = s_cubeIndices[i + 2];
+            
+            uint16_t jnd  = (i / 9) * 3;
+            uint16_t jnd1 = jnd + 1;
+            uint16_t jnd2 = jnd + 2;
 
             // P0
             s_cubeVerticesN0[i]      = s_cubeVertices[ind];
@@ -96,6 +127,10 @@ class ExampleCubes : public entry::AppI
             s_cubeVerticesN0[i].m_x2 = s_cubeVertices[ind2].m_x;
             s_cubeVerticesN0[i].m_y2 = s_cubeVertices[ind2].m_y;
             s_cubeVerticesN0[i].m_z2 = s_cubeVertices[ind2].m_z;
+            // edge exclusion
+            s_cubeVerticesN0[i].m_e1 = s_edgeExclude[jnd];
+            s_cubeVerticesN0[i].m_e2 = s_edgeExclude[jnd1];
+            s_cubeVerticesN0[i].m_e3 = s_edgeExclude[jnd2];
 
             // P1
             s_cubeVerticesN0[i + 1]      = s_cubeVertices[ind1];
@@ -108,6 +143,10 @@ class ExampleCubes : public entry::AppI
             s_cubeVerticesN0[i + 1].m_x2 = s_cubeVertices[ind2].m_x;
             s_cubeVerticesN0[i + 1].m_y2 = s_cubeVertices[ind2].m_y;
             s_cubeVerticesN0[i + 1].m_z2 = s_cubeVertices[ind2].m_z;
+            // edge exclusion
+            s_cubeVerticesN0[i + 1].m_e1 = s_edgeExclude[jnd];
+            s_cubeVerticesN0[i + 1].m_e2 = s_edgeExclude[jnd1];
+            s_cubeVerticesN0[i + 1].m_e3 = s_edgeExclude[jnd2];
 
             // P2
             s_cubeVerticesN0[i + 2]      = s_cubeVertices[ind2];
@@ -120,6 +159,10 @@ class ExampleCubes : public entry::AppI
             s_cubeVerticesN0[i + 2].m_x2 = s_cubeVertices[ind1].m_x;
             s_cubeVerticesN0[i + 2].m_y2 = s_cubeVertices[ind1].m_y;
             s_cubeVerticesN0[i + 2].m_z2 = s_cubeVertices[ind1].m_z;
+            // edge exclusion
+            s_cubeVerticesN0[i + 2].m_e1 = s_edgeExclude[jnd];
+            s_cubeVerticesN0[i + 2].m_e2 = s_edgeExclude[jnd1];
+            s_cubeVerticesN0[i + 2].m_e3 = s_edgeExclude[jnd2];
 
             s_cubeIndices2[i    ] = i;
             s_cubeIndices2[i + 1] = i + 1;
@@ -210,7 +253,7 @@ class ExampleCubes : public entry::AppI
 			bgfx::dbgTextPrintf(0, 3, 0x0f, "Frame: % 7.3f[ms]", double(frameTime)*toMs);
 
 			float at[3]  = { 0.0f, 0.0f,   0.0f };
-			float eye[3] = { 0.0f, 0.0f, -35.0f };
+			float eye[3] = { 0.0f, 0.0f, -10.0f };
 
 			// Set view and projection matrix for view 0.
 			const bgfx::HMD* hmd = bgfx::getHMD();
@@ -243,7 +286,7 @@ class ExampleCubes : public entry::AppI
 			// if no other draw calls are submitted to view 0.
 			bgfx::touch(0);
 
-#define DRAW_GRID
+//#define DRAW_GRID
 #ifdef DRAW_GRID
 			// Submit 11x11 cubes.
 			for (uint32_t yy = 0; yy < 11; ++yy)
@@ -272,6 +315,7 @@ class ExampleCubes : public entry::AppI
 			}
 #else
 			float mtx[16];
+//            bx::mtxIdentity(mtx);
 			//bx::mtxScale(mtx, 5.0f, 5.0f, 5.0f);
 			bx::mtxRotateXY(mtx, time, time);
 //			mtx[12] = -15.0f + float(xx)*3.0f;

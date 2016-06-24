@@ -1,4 +1,4 @@
-$input a_position, a_color0, a_tangent, a_bitangent
+$input a_position, a_tangent, a_bitangent, a_weight, a_color0
 $output v_color0, v_dist
 
 /*
@@ -12,6 +12,8 @@ $output v_color0, v_dist
 
 //TODO figure out how to set custom uniforms in bgfx
 #define u_WIN_SCALE u_viewRect.zw
+
+#define REMOVE_EDGE_WEIGHT 100
 
 #include "../common/common.sh"
 
@@ -47,15 +49,15 @@ void main()
     // Computed distance from vertex to line in 2D coords
     if(swizz<0.1)
     {
-       v_dist = vec3(area/length(v0),0,0);
+       v_dist = vec3(area/length(v0),REMOVE_EDGE_WEIGHT*a_weight.y,REMOVE_EDGE_WEIGHT*a_weight.z);
     }
     else if(swizz<1.1)
     {
-       v_dist = vec3(0,area/length(v1),0);
+       v_dist = vec3(REMOVE_EDGE_WEIGHT*a_weight.x,area/length(v1),REMOVE_EDGE_WEIGHT*a_weight.z);
     }
     else
     {
-       v_dist = vec3(0,0,area/length(v2));
+       v_dist = vec3(REMOVE_EDGE_WEIGHT*a_weight.x,REMOVE_EDGE_WEIGHT*a_weight.y,area/length(v2));
     }
 
     // ----
